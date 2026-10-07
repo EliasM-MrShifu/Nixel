@@ -1,0 +1,1 @@
+import{n as e,r as t,t as n}from"./index-BiZ9fEHb.js";var r={};function i(n,r){return t(),e(`p`)}var a=n(r,[[`render`,i]]);export{a as default};
