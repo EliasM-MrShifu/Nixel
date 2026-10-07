@@ -52,6 +52,34 @@ def crear_base_datos() -> None:
                     AFTER creado_en
                     """
                 )
+            for columna, definicion in (
+                ("foto_perfil_mime", "VARCHAR(40) NULL"),
+                ("foto_perfil_datos", "MEDIUMBLOB NULL"),
+            ):
+                cursor.execute(
+                    """
+                    SELECT COUNT(*) FROM information_schema.columns
+                    WHERE table_schema = %s AND table_name = 'usuarios'
+                      AND column_name = %s
+                    """,
+                    (NOMBRE_BASE_DATOS, columna),
+                )
+                if cursor.fetchone()[0] == 0:
+                    cursor.execute(f"ALTER TABLE usuarios ADD COLUMN {columna} {definicion}")
+            cursor.execute(
+                """
+                SELECT COUNT(*)
+                FROM information_schema.columns
+                WHERE table_schema = %s
+                  AND table_name = 'github_cuentas'
+                  AND column_name = 'github_access_token'
+                """,
+                (NOMBRE_BASE_DATOS,),
+            )
+            if cursor.fetchone()[0] == 0:
+                cursor.execute(
+                    "ALTER TABLE github_cuentas ADD COLUMN github_access_token TEXT NULL"
+                )
             for columna in ("tarea_personal_id", "tarea_equipo_id"):
                 cursor.execute(
                     """

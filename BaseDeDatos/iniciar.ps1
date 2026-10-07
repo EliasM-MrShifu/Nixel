@@ -24,11 +24,14 @@ if (Test-Path -LiteralPath $correoVapid) {
 $githubConfig = Join-Path $configuracionLocal "github_oauth.json"
 if (Test-Path -LiteralPath $githubConfig) {
     $github = Get-Content -LiteralPath $githubConfig -Raw | ConvertFrom-Json
-    if ([string]::IsNullOrWhiteSpace($github.client_id) -or [string]::IsNullOrWhiteSpace($github.client_secret)) {
+    if ([string]::IsNullOrWhiteSpace($github.client_id) -or
+        [string]::IsNullOrWhiteSpace($github.client_secret) -or
+        [string]::IsNullOrWhiteSpace($github.token_encryption_key)) {
         throw "La configuración OAuth local de GitHub está incompleta: $githubConfig"
     }
     $env:GITHUB_CLIENT_ID = $github.client_id
     $env:GITHUB_CLIENT_SECRET = $github.client_secret
+    $env:GITHUB_TOKEN_ENCRYPTION_KEY = $github.token_encryption_key
     $env:GITHUB_REDIRECT_URI = "http://127.0.0.1:5000/api/github/callback"
 }
 

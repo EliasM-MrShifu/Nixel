@@ -81,10 +81,14 @@ responder cada operación.
 
 ## GitHub, avisos del equipo y notificaciones del sistema
 
-Cada usuario conecta su propio perfil de GitHub con OAuth. Nexo solo solicita `read:user`,
-consulta el perfil y guarda el ID y el enlace público; el token OAuth no se conserva y no
-se solicitan permisos para repositorios. Crea una OAuth App en GitHub y configura, en la
-misma terminal donde levantas la API:
+Cada usuario conecta su propia cuenta de GitHub. Nexus solicita `read:user` y
+`public_repo`: puede listar y descargar repositorios públicos, además de crear repositorios
+públicos nuevos y subirles proyectos ZIP. No solicita acceso a repositorios privados. Para
+cargar un ZIP, el nombre debe ser válido y el archivo puede tener hasta 15 MB, con un máximo
+de 100 archivos, 20 MB por archivo y 50 MB descomprimidos. La carga crea un repositorio
+nuevo y no modifica repositorios existentes.
+
+Crea una OAuth App en GitHub y configura:
 
 ```powershell
 $env:GITHUB_CLIENT_ID = "ID_DE_LA_OAUTH_APP"
@@ -94,17 +98,38 @@ $env:WEB_APP_URL = "http://localhost:5173"
 ```
 
 Registra en la OAuth App exactamente la URL de callback indicada en `GITHUB_REDIRECT_URI`.
-No publiques el secreto ni lo guardes en los archivos del proyecto. Después de crearla,
-ejecuta `.\BaseDeDatos\configurar_github.ps1`: te pide el Client ID y solicita el Client
-Secret en modo oculto; las credenciales quedan en `%LOCALAPPDATA%\Nexo\github_oauth.json`,
-fuera del repositorio, con permisos restringidos al usuario y SYSTEM. Reinicia la API con
-`.\BaseDeDatos\iniciar.ps1` para leerlas.
+No publiques el secreto ni lo guardes en los archivos del proyecto. Ejecuta
+`.\BaseDeDatos\configurar_github.ps1`: te pide el Client ID y solicita el Client Secret en
+modo oculto; guarda la configuración y una clave Fernet generada al azar en
+`%LOCALAPPDATA%\Nexo\github_oauth.json`, fuera del repositorio y con permisos restringidos
+al usuario y SYSTEM. Se conserva el nombre histórico de la carpeta para no perder
+configuraciones existentes. Los tokens OAuth se cifran antes de guardarlos en MySQL. Conserva
+ese archivo y su clave: si se pierde, vuelve a configurar GitHub y autoriza de nuevo la
+cuenta. Reinicia la API con `.\BaseDeDatos\iniciar.ps1` para cargar la configuración.
+Inicia la API con ese script para que las variables OAuth se carguen al proceso; ejecutar
+`BaseDeDatos\api.py` directamente no configura `GITHUB_CLIENT_ID`.
+Las conexiones anteriores deben volver a autorizarse para conceder `public_repo`.
 
-En cada servidor existe una sección de avisos de ausencia/enfermedad. Las imágenes
-aceptadas son PNG, JPG y WEBP de hasta 5 MB; quedan en MySQL y son visibles a todas las
-personas que pertenecen a ese servidor. Los avisos no son públicos fuera de sus miembros.
+En cada servidor, el canal **Avisos** muestra las ausencias y enfermedades a sus miembros.
+El certificado (PNG, JPG o WEBP de hasta 5 MB) solo lo puede abrir quien publicó el aviso
+y el administrador del servidor; otros miembros solo ven el aviso y sus fechas. El canal
+y los certificados no son públicos fuera de las personas miembros autorizadas.
 
-Para recibir alertas aunque Nexo no esté abierto, habilita Web Push. La aplicación necesita
+El canal **Archivos** permite compartir documentos Word, PowerPoint, ZIP y otros archivos
+de hasta 20 MB. Los archivos quedan en MySQL y cualquier miembro del servidor puede
+descargarlos; no se ejecutan ni se muestran directamente en el navegador.
+
+Cada cuenta puede cambiar su nombre visible y foto (PNG, JPG o WEBP, hasta 2 MB) en **Mi
+perfil**. Las fotos se guardan en MySQL y su endpoint requiere iniciar sesión; solo se
+muestran al propio usuario, sus contactos aceptados, miembros de sus equipos o las
+personas involucradas en una solicitud de contacto pendiente.
+
+La sección **Contactos** envía invitaciones a una cuenta existente por correo. La invitación
+no crea una amistad hasta que el destinatario la acepte; el destinatario también puede
+rechazarla y cualquier integrante puede quitar un contacto aceptado. Los nombres, fotos,
+solicitudes y relaciones quedan persistidos en MySQL.
+
+Para recibir alertas aunque Nexus no esté abierto, habilita Web Push. La aplicación necesita
 HTTPS en despliegue (localhost se considera seguro en desarrollo), permiso de notificaciones
 en cada dispositivo y claves VAPID configuradas en la API. Puedes generar las claves fuera
 del proyecto desde PowerShell (las guarda en la carpeta actual):
@@ -141,11 +166,13 @@ la propia cuenta, útil para sus otros dispositivos.
 ## Tablas
 
 - `usuarios` y `sesiones`: cuentas, último inicio de sesión y sesiones con contraseñas/tokens almacenados como hashes.
+- `solicitudes_contacto`: invitaciones pendientes, aceptadas o rechazadas entre usuarios.
 - `equipos` y `usuarios_equipos`: servidores y pertenencia de sus usuarios.
 - `tareas` y `tareas_personales`: tareas/proyectos compartidos o privados.
 - `calendario` y `calendario_personal`: fecha y horas de las tareas.
 - `mensajes_chat`: mensajes de servidor persistentes.
-- `github_cuentas` y `github_oauth_states`: perfiles GitHub vinculados y estados OAuth temporales.
+- `github_cuentas` y `github_oauth_states`: perfiles GitHub, tokens OAuth cifrados y estados OAuth temporales.
+- `archivos_equipo`: documentos y archivos descargables compartidos por servidor.
 - `avisos_ausencia`: avisos y certificados de imagen asociados a un servidor.
 - `notificaciones` y `suscripciones_push`: historial de avisos y suscripciones de cada dispositivo.
 

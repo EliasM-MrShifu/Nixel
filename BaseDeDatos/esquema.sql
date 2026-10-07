@@ -9,10 +9,30 @@ CREATE TABLE IF NOT EXISTS usuarios (
     nombre VARCHAR(120) NOT NULL,
     correo VARCHAR(254) NOT NULL,
     hash_contrasena VARCHAR(128) NOT NULL,
+    foto_perfil_mime VARCHAR(40) NULL,
+    foto_perfil_datos MEDIUMBLOB NULL,
     creado_en TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     ultimo_inicio_sesion TIMESTAMP NULL DEFAULT NULL,
     PRIMARY KEY (id),
     UNIQUE KEY uq_usuarios_correo (correo)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS solicitudes_contacto (
+    id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    solicitante_id BIGINT UNSIGNED NOT NULL,
+    destinatario_id BIGINT UNSIGNED NOT NULL,
+    estado ENUM('pendiente', 'aceptada', 'rechazada') NOT NULL DEFAULT 'pendiente',
+    creada_en TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    respondida_en TIMESTAMP NULL DEFAULT NULL,
+    PRIMARY KEY (id),
+    UNIQUE KEY uq_contacto_direccion (solicitante_id, destinatario_id),
+    KEY idx_contactos_destinatario_estado (destinatario_id, estado, creada_en),
+    KEY idx_contactos_solicitante_estado (solicitante_id, estado, creada_en),
+    CONSTRAINT chk_contacto_no_self CHECK (solicitante_id <> destinatario_id),
+    CONSTRAINT fk_contacto_solicitante
+        FOREIGN KEY (solicitante_id) REFERENCES usuarios(id) ON DELETE CASCADE,
+    CONSTRAINT fk_contacto_destinatario
+        FOREIGN KEY (destinatario_id) REFERENCES usuarios(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS sesiones (
@@ -132,6 +152,7 @@ CREATE TABLE IF NOT EXISTS github_cuentas (
     github_login VARCHAR(120) NOT NULL,
     avatar_url VARCHAR(1000) NOT NULL,
     profile_url VARCHAR(1000) NOT NULL,
+    github_access_token TEXT NULL,
     conectado_en TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     PRIMARY KEY (usuario_id),
     UNIQUE KEY uq_github_user_id (github_user_id),
@@ -147,6 +168,23 @@ CREATE TABLE IF NOT EXISTS github_oauth_states (
     PRIMARY KEY (state_hash),
     KEY idx_github_oauth_expira (expira_en),
     CONSTRAINT fk_github_oauth_usuario
+        FOREIGN KEY (usuario_id) REFERENCES usuarios(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS archivos_equipo (
+    id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    equipo_id BIGINT UNSIGNED NOT NULL,
+    usuario_id BIGINT UNSIGNED NOT NULL,
+    nombre VARCHAR(255) NOT NULL,
+    mime VARCHAR(120) NOT NULL,
+    datos LONGBLOB NOT NULL,
+    creado_en TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (id),
+    KEY idx_archivos_equipo_fecha (equipo_id, creado_en),
+    KEY idx_archivos_usuario (usuario_id),
+    CONSTRAINT fk_archivos_equipo
+        FOREIGN KEY (equipo_id) REFERENCES equipos(id) ON DELETE CASCADE,
+    CONSTRAINT fk_archivos_usuario
         FOREIGN KEY (usuario_id) REFERENCES usuarios(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 

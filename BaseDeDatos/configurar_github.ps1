@@ -16,11 +16,29 @@ try {
         throw "El Client Secret de GitHub es obligatorio."
     }
 
+    $ruta = Join-Path $configuracionLocal "github_oauth.json"
+    $tokenKey = $null
+    if (Test-Path -LiteralPath $ruta) {
+        $configuracionExistente = Get-Content -LiteralPath $ruta -Raw | ConvertFrom-Json
+        $tokenKey = $configuracionExistente.token_encryption_key
+    }
+    if ([string]::IsNullOrWhiteSpace($tokenKey)) {
+        $keyBytes = [byte[]]::new(32)
+        $random = [Security.Cryptography.RandomNumberGenerator]::Create()
+        try {
+            $random.GetBytes($keyBytes)
+        }
+        finally {
+            $random.Dispose()
+        }
+        $tokenKey = [Convert]::ToBase64String($keyBytes).Replace('+', '-').Replace('/', '_')
+        [Array]::Clear($keyBytes, 0, $keyBytes.Length)
+    }
     $configuracion = @{
         client_id = $clientId
         client_secret = $clientSecret
+        token_encryption_key = $tokenKey
     } | ConvertTo-Json
-    $ruta = Join-Path $configuracionLocal "github_oauth.json"
     [IO.File]::WriteAllText($ruta, $configuracion, [Text.UTF8Encoding]::new($false))
 
     $sid = [Security.Principal.WindowsIdentity]::GetCurrent().User.Value
